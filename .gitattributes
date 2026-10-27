@@ -1,0 +1,4 @@
+# Keep LF everywhere so MANIFEST.json hashes match on every OS
+* text=auto eol=lf
+*.png binary
+*.xlsx binary

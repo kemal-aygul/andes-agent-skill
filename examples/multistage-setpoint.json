@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "study_name": "kundur-multistage-agc-signal",
+  "description": "Use the SynGen group API to apply and then remove a paux setpoint in a multi-stage TDS run.",
+  "defaults": {"log_level": 20, "strict": true, "overwrite": false, "copy_inputs": true, "seed": 42},
+  "jobs": [
+    {
+      "id": "paux-step-and-restore",
+      "case": {"builtin": "kundur/kundur_full.xlsx"},
+      "routine": "tds",
+      "disable_existing_events": ["Toggle"],
+      "routine_config": {"no_tqdm": 1},
+      "stages": [
+        {"until": 1.0, "before": []},
+        {
+          "until": 2.0,
+          "before": [
+            {"op": "set_setpoint", "group": "SynGen", "idx": 1, "name": "paux", "value": 0.05, "note": "AGC-style auxiliary power step on system base."}
+          ]
+        },
+        {
+          "until": 10.0,
+          "before": [
+            {"op": "set_setpoint", "group": "SynGen", "idx": 1, "name": "paux", "value": 0.0, "note": "Restore the auxiliary input."}
+          ]
+        }
+      ],
+      "outputs": {
+        "timeseries": [
+          {"model": "TGOV1", "variable": "paux", "file": "paux.csv"},
+          {"model": "GENROU", "variable": "omega", "file": "omega.csv"}
+        ],
+        "plots": [
+          {"model": "TGOV1", "variable": "paux", "ylabel": "Auxiliary power [pu]", "grid": true, "file": "paux.png"},
+          {"model": "GENROU", "variable": "omega", "ylabel": "Generator speed [pu]", "grid": true, "file": "omega.png"}
+        ]
+      },
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    }
+  ]
+}

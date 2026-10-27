@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ANDES Run Manifest",
+  "type": "object",
+  "required": [
+    "generated_at_utc",
+    "files"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "generated_at_utc": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "study_name": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "size_bytes",
+          "sha256"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "not": {
+              "anyOf": [
+                {
+                  "pattern": "^(?:[A-Za-z]:[\\\\/]|/)"
+                },
+                {
+                  "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)"
+                }
+              ]
+            }
+          },
+          "size_bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}

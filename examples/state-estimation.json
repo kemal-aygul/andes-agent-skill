@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "study_name": "ieee14-state-estimation",
+  "description": "Compare WLS bad-data detection and robust LAV estimation using reproducible synthetic measurements.",
+  "defaults": {"log_level": 20, "strict": false, "overwrite": false, "copy_inputs": true, "seed": 42},
+  "jobs": [
+    {
+      "id": "wls-with-outlier",
+      "case": {"builtin": "ieee14/ieee14.json"},
+      "routine": "se",
+      "routine_args": {
+        "algorithm": "wls",
+        "seed": 42,
+        "measurements": [
+          {"type": "bus_voltage", "sigma": 0.01},
+          {"type": "bus_injection", "sigma_p": 0.02, "sigma_q": 0.03}
+        ],
+        "gross_errors": [{"measurement_index": 0, "sigma_multiplier": 10.0, "note": "Synthetic ten-sigma outlier."}],
+        "chi_squared": true,
+        "confidence": 0.95
+      },
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    },
+    {
+      "id": "lav-with-same-outlier",
+      "case": {"builtin": "ieee14/ieee14.json"},
+      "routine": "se",
+      "routine_args": {
+        "algorithm": "lav",
+        "seed": 42,
+        "measurements": [
+          {"type": "bus_voltage", "sigma": 0.01},
+          {"type": "bus_injection", "sigma_p": 0.02, "sigma_q": 0.03}
+        ],
+        "gross_errors": [{"measurement_index": 0, "sigma_multiplier": 10.0}],
+        "chi_squared": false
+      },
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    }
+  ]
+}

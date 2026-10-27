@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "study_name": "ieee14-power-flow",
+  "description": "IEEE 14-bus power flow, bus-voltage export, and an explicitly sourced example voltage check.",
+  "defaults": {
+    "log_level": 20,
+    "strict": true,
+    "overwrite": false,
+    "copy_inputs": true,
+    "seed": 42
+  },
+  "jobs": [
+    {
+      "id": "base-power-flow",
+      "case": {"builtin": "ieee14/ieee14.json"},
+      "routine": "pflow",
+      "outputs": {
+        "tables": [
+          {
+            "model": "Bus",
+            "fields": ["idx", "name", "v", "a"],
+            "source": "v",
+            "file": "bus-voltage-angle.csv"
+          },
+          {
+            "model": "PV",
+            "fields": ["idx", "bus", "p", "q"],
+            "source": "v",
+            "file": "pv-generation.csv"
+          }
+        ]
+      },
+      "checks": {
+        "require_convergence": true,
+        "finite": true,
+        "criteria": [
+          {
+            "name": "example-minimum-bus-voltage",
+            "model": "Bus",
+            "variable": "v",
+            "source": "current",
+            "aggregate": "min",
+            "operator": ">=",
+            "threshold": 0.95,
+            "basis": "Example user-defined screening threshold; not asserted as a universal grid-code limit."
+          }
+        ]
+      }
+    }
+  ]
+}

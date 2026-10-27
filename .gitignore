@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Study outputs that should never be committed
+_smoke/
+runs/
+results/
+*-output/
+*_out.txt
+*_out.lst
+*_out.npz
+
+# Tooling and editor files
+.pytest_cache/
+*.egg-info/
+.DS_Store
+.idea/
+.vscode/

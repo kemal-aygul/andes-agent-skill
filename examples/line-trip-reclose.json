@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "study_name": "kundur-line-trip-reclose",
+  "description": "Trip Line_5 at 1.0 s, reclose it at 1.5 s, and inspect rotor-speed response.",
+  "defaults": {"log_level": 20, "strict": true, "overwrite": false, "copy_inputs": true, "seed": 42},
+  "jobs": [
+    {
+      "id": "line-5-trip-reclose",
+      "case": {"builtin": "kundur/kundur_full.xlsx"},
+      "routine": "tds",
+      "disable_existing_events": ["Toggle"],
+      "events": [
+        {"type": "toggle", "model": "Line", "dev": "Line_5", "t": 1.0},
+        {"type": "toggle", "model": "Line", "dev": "Line_5", "t": 1.5}
+      ],
+      "routine_config": {"tf": 5.0, "no_tqdm": 1},
+      "outputs": {
+        "timeseries": [{"model": "GENROU", "variable": "omega", "file": "omega.csv"}],
+        "plots": [{"model": "GENROU", "variable": "omega", "ylabel": "Speed [pu]", "grid": true, "file": "omega.png"}]
+      },
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    }
+  ]
+}

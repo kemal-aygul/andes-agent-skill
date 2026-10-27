@@ -1,0 +1,1566 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/andes-study.schema.json",
+  "title": "Validated ANDES Study Specification",
+  "$comment": "Parity target: scripts/spec_core.py::validate_spec. Rules enforced only by validate_spec (not expressible in JSON Schema): (1) stages[].until must be strictly increasing; (2) a TDS job's final time (last stages[].until, otherwise routine_config.tf) must be >= every event time; (3) defaults.max_jobs caps the number of jobs unless defaults.large_run_approved is true; (4) job ids must be unique; (5) fault events require tc > tf; (6) criterion bounds[0] must not exceed bounds[1]. Python-only strictness that JSON Schema cannot represent: non-finite numbers (NaN/Infinity) are rejected by spec_core but are not valid JSON; spec_core requires true Python ints, while JSON Schema treats integer-valued floats such as 42.0 as integers. Known intentional differences (schema stricter than code, because code normalises the input first): spec_core lowercases routine/op/event type/SE algorithm, so mixed-case values pass validate_spec but not this schema; spec_core coerces schema_version/study_name with str() and silently replaces a non-object defaults, so those inputs pass validate_spec but not this schema; output file names that start with a drive letter and colon or with a slash/backslash are rejected here because safe_relative_path would reject them at runtime even though _validate_relative_file lets some of them through on Windows. Fields that spec_core only checks for presence or container type (idx, bus, dev, value on set_parameter/set_setpoint, indices, measurement bus_idx/line_idx elements, gross_errors.note) are intentionally unconstrained here.",
+  "type": "object",
+  "required": [
+    "jobs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "study_name": {
+      "type": "string",
+      "pattern": "\\S"
+    },
+    "description": {
+      "type": "string"
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    },
+    "jobs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/job"
+      }
+    }
+  },
+  "$defs": {
+    "relativeFile": {
+      "type": "string",
+      "pattern": "\\S",
+      "not": {
+        "anyOf": [
+          {
+            "pattern": "^[A-Za-z]:"
+          },
+          {
+            "pattern": "^[\\\\/]"
+          },
+          {
+            "pattern": "(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)"
+          }
+        ]
+      }
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "builtin": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "\\S"
+        },
+        "addfiles": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "config_option": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "="
+          }
+        },
+        "default_config": {
+          "type": "boolean"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "builtin": {
+              "type": "null"
+            }
+          }
+        },
+        {
+          "required": [
+            "builtin"
+          ],
+          "properties": {
+            "builtin": {
+              "type": "string"
+            },
+            "path": {
+              "type": "null"
+            }
+          }
+        }
+      ]
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "log_level": {
+          "enum": [
+            10,
+            20,
+            30,
+            40,
+            50
+          ]
+        },
+        "strict": {
+          "type": "boolean"
+        },
+        "overwrite": {
+          "type": "boolean"
+        },
+        "copy_inputs": {
+          "type": "boolean"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "max_jobs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "large_run_approved": {
+          "type": "boolean"
+        }
+      }
+    },
+    "opSetStatus": {
+      "type": "object",
+      "required": [
+        "op",
+        "model",
+        "idx",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "set_status"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "idx": true,
+        "value": {
+          "enum": [
+            0,
+            1,
+            false,
+            true
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "opSetParameter": {
+      "type": "object",
+      "required": [
+        "op",
+        "model",
+        "field",
+        "idx",
+        "value",
+        "base"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "set_parameter"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "field": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "idx": true,
+        "value": true,
+        "base": {
+          "enum": [
+            "device",
+            "system"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "opScaleParameter": {
+      "type": "object",
+      "required": [
+        "op",
+        "model",
+        "field",
+        "factor",
+        "base"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "scale_parameter"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "field": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "factor": {
+          "type": "number"
+        },
+        "base": {
+          "enum": [
+            "device",
+            "system"
+          ]
+        },
+        "indices": {
+          "type": "array"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "opSetSetpoint": {
+      "type": "object",
+      "required": [
+        "op",
+        "group",
+        "idx",
+        "name",
+        "value"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "set_setpoint"
+        },
+        "group": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "idx": true,
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "value": true,
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "eventFault": {
+      "type": "object",
+      "required": [
+        "type",
+        "bus",
+        "tf",
+        "tc"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "fault"
+        },
+        "bus": true,
+        "tf": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tc": {
+          "type": "number",
+          "minimum": 0
+        },
+        "rf": {
+          "type": "number"
+        },
+        "xf": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "eventToggle": {
+      "type": "object",
+      "required": [
+        "type",
+        "model",
+        "dev",
+        "t"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "toggle"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "dev": true,
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "eventAlter": {
+      "type": "object",
+      "required": [
+        "type",
+        "model",
+        "dev",
+        "src",
+        "t",
+        "method",
+        "amount"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "alter"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "dev": true,
+        "src": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "t": {
+          "type": "number",
+          "minimum": 0
+        },
+        "method": {
+          "enum": [
+            "=",
+            "+",
+            "-",
+            "*",
+            "/"
+          ]
+        },
+        "amount": {
+          "type": "number"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "measurementBusVoltage": {
+      "type": "object",
+      "required": [
+        "type",
+        "sigma"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "bus_voltage"
+        },
+        "bus_idx": {
+          "type": "array"
+        },
+        "sigma": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "measurementBusAngle": {
+      "type": "object",
+      "required": [
+        "type",
+        "sigma"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "bus_angle"
+        },
+        "bus_idx": {
+          "type": "array"
+        },
+        "sigma": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "measurementBusInjection": {
+      "type": "object",
+      "required": [
+        "type",
+        "sigma_p",
+        "sigma_q"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "bus_injection"
+        },
+        "bus_idx": {
+          "type": "array"
+        },
+        "sigma_p": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sigma_q": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "measurementLineFlow": {
+      "type": "object",
+      "required": [
+        "type",
+        "sigma_p",
+        "sigma_q"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "line_flow"
+        },
+        "line_idx": {
+          "type": "array"
+        },
+        "sigma_p": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "sigma_q": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "measurement": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/measurementBusVoltage"
+        },
+        {
+          "$ref": "#/$defs/measurementBusAngle"
+        },
+        {
+          "$ref": "#/$defs/measurementBusInjection"
+        },
+        {
+          "$ref": "#/$defs/measurementLineFlow"
+        }
+      ]
+    },
+    "table": {
+      "type": "object",
+      "required": [
+        "model",
+        "fields",
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "fields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "indices": {
+          "type": "array"
+        },
+        "source": {
+          "enum": [
+            "v",
+            "vin"
+          ]
+        },
+        "file": {
+          "$ref": "#/$defs/relativeFile"
+        }
+      }
+    },
+    "series": {
+      "type": "object",
+      "required": [
+        "model",
+        "variable",
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "variable": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "indices": {
+          "type": "array"
+        },
+        "factor": {
+          "type": "number"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "file": {
+          "$ref": "#/$defs/relativeFile"
+        }
+      }
+    },
+    "plot": {
+      "type": "object",
+      "required": [
+        "model",
+        "variable",
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "variable": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "indices": {
+          "type": "array"
+        },
+        "factor": {
+          "type": "number"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "file": {
+          "$ref": "#/$defs/relativeFile"
+        },
+        "xlabel": {
+          "type": "string"
+        },
+        "ylabel": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "grid": {
+          "type": "boolean"
+        },
+        "legend": {
+          "type": "boolean"
+        },
+        "dpi": {
+          "type": "integer",
+          "minimum": 72
+        },
+        "xlim": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "ylim": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "criterion": {
+      "type": "object",
+      "required": [
+        "name",
+        "model",
+        "variable",
+        "source",
+        "aggregate",
+        "operator",
+        "basis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "variable": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "indices": {
+          "type": "array"
+        },
+        "source": {
+          "enum": [
+            "timeseries",
+            "current"
+          ]
+        },
+        "aggregate": {
+          "enum": [
+            "min",
+            "max",
+            "mean",
+            "final",
+            "abs_max",
+            "range"
+          ]
+        },
+        "operator": {
+          "enum": [
+            "<",
+            "<=",
+            ">",
+            ">=",
+            "==",
+            "!=",
+            "between",
+            "outside"
+          ]
+        },
+        "threshold": {
+          "type": "number"
+        },
+        "bounds": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "atol": {
+          "type": "number",
+          "minimum": 0
+        },
+        "basis": {
+          "type": "string",
+          "pattern": "\\S"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operator": {
+                "enum": [
+                  "between",
+                  "outside"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "bounds"
+            ]
+          },
+          "else": {
+            "required": [
+              "threshold"
+            ]
+          }
+        }
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/table"
+          }
+        },
+        "timeseries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/series"
+          }
+        },
+        "plots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/plot"
+          }
+        },
+        "eig_plot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/relativeFile"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cpf_plot": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "bus_idx",
+                "file"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "bus_idx": true,
+                "file": {
+                  "$ref": "#/$defs/relativeFile"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "qv_plot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/relativeFile"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_convergence": {
+          "type": "boolean"
+        },
+        "finite": {
+          "type": "boolean"
+        },
+        "criteria": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/criterion"
+          }
+        }
+      }
+    },
+    "eigSweep": {
+      "type": "object",
+      "required": [
+        "model",
+        "parameter",
+        "idx",
+        "values"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "parameter": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "idx": true,
+        "values": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
+        "eig_indices": {
+          "anyOf": [
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plot_file": {
+          "$ref": "#/$defs/relativeFile"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "plot_file"
+            ]
+          },
+          "then": {
+            "required": [
+              "eig_indices"
+            ],
+            "properties": {
+              "eig_indices": {
+                "type": "array",
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "eigArgs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sweep": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/eigSweep"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "seArgs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "enum": [
+            "wls",
+            "lav"
+          ]
+        },
+        "measurements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/measurement"
+          }
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "gross_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "measurement_index",
+              "sigma_multiplier"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "measurement_index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "sigma_multiplier": {
+                "type": "number"
+              },
+              "note": true
+            }
+          }
+        },
+        "chi_squared": {
+          "type": "boolean"
+        },
+        "confidence": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "algorithm"
+            ],
+            "properties": {
+              "algorithm": {
+                "const": "lav"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "chi_squared": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "gross_errors"
+            ],
+            "properties": {
+              "gross_errors": {
+                "minItems": 1
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "measurements"
+            ],
+            "properties": {
+              "measurements": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cpfArgs": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "qv": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "bus_idx",
+                "q_range"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "bus_idx": true,
+                "q_range": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "load_scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "p0_target": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number"
+          }
+        },
+        "q0_target": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number"
+          }
+        },
+        "pg_target": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "number"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "qv"
+            ],
+            "properties": {
+              "qv": {
+                "type": "object"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "load_scale"
+                  ]
+                },
+                {
+                  "required": [
+                    "p0_target"
+                  ]
+                },
+                {
+                  "required": [
+                    "q0_target"
+                  ]
+                },
+                {
+                  "required": [
+                    "pg_target"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "anyOf": [
+            {
+              "required": [
+                "load_scale"
+              ]
+            },
+            {
+              "required": [
+                "p0_target"
+              ]
+            },
+            {
+              "required": [
+                "q0_target"
+              ]
+            },
+            {
+              "required": [
+                "pg_target"
+              ]
+            },
+            {
+              "required": [
+                "qv"
+              ],
+              "properties": {
+                "qv": {
+                  "type": "object"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "until"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "until": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "before": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/opSetSetpoint"
+              },
+              {
+                "$ref": "#/$defs/opSetParameter"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "routineIsNoArgs": {
+      "anyOf": [
+        {
+          "not": {
+            "required": [
+              "routine"
+            ]
+          }
+        },
+        {
+          "required": [
+            "routine"
+          ],
+          "properties": {
+            "routine": {
+              "enum": [
+                "inspect",
+                "pflow",
+                "tds"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "routineIsEig": {
+      "required": [
+        "routine"
+      ],
+      "properties": {
+        "routine": {
+          "const": "eig"
+        }
+      }
+    },
+    "routineIsSe": {
+      "required": [
+        "routine"
+      ],
+      "properties": {
+        "routine": {
+          "const": "se"
+        }
+      }
+    },
+    "routineIsCpf": {
+      "required": [
+        "routine"
+      ],
+      "properties": {
+        "routine": {
+          "const": "cpf"
+        }
+      }
+    },
+    "routineIsTds": {
+      "required": [
+        "routine"
+      ],
+      "properties": {
+        "routine": {
+          "const": "tds"
+        }
+      }
+    },
+    "routineIsNotEig": {
+      "not": {
+        "required": [
+          "routine"
+        ],
+        "properties": {
+          "routine": {
+            "const": "eig"
+          }
+        }
+      }
+    },
+    "routineIsNotCpf": {
+      "not": {
+        "required": [
+          "routine"
+        ],
+        "properties": {
+          "routine": {
+            "const": "cpf"
+          }
+        }
+      }
+    },
+    "routineIsNotTds": {
+      "not": {
+        "required": [
+          "routine"
+        ],
+        "properties": {
+          "routine": {
+            "const": "tds"
+          }
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "required": [
+        "case"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "description": {
+          "type": "string"
+        },
+        "case": {
+          "$ref": "#/$defs/case"
+        },
+        "routine": {
+          "enum": [
+            "inspect",
+            "pflow",
+            "tds",
+            "eig",
+            "se",
+            "cpf"
+          ]
+        },
+        "disable_existing_events": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "\\S"
+          }
+        },
+        "pre_setup": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/opSetStatus"
+          }
+        },
+        "post_setup": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/opSetParameter"
+              },
+              {
+                "$ref": "#/$defs/opScaleParameter"
+              }
+            ]
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/eventFault"
+              },
+              {
+                "$ref": "#/$defs/eventToggle"
+              },
+              {
+                "$ref": "#/$defs/eventAlter"
+              }
+            ]
+          }
+        },
+        "routine_config": {
+          "type": "object",
+          "propertyNames": {
+            "minLength": 1,
+            "pattern": "^[^_]"
+          }
+        },
+        "routine_args": {
+          "type": "object"
+        },
+        "stages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        },
+        "outputs": {
+          "$ref": "#/$defs/outputs"
+        },
+        "checks": {
+          "$ref": "#/$defs/checks"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNoArgs"
+          },
+          "then": {
+            "properties": {
+              "routine_args": {
+                "maxProperties": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsEig"
+          },
+          "then": {
+            "properties": {
+              "routine_args": {
+                "$ref": "#/$defs/eigArgs"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsSe"
+          },
+          "then": {
+            "properties": {
+              "routine_args": {
+                "$ref": "#/$defs/seArgs"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsCpf"
+          },
+          "then": {
+            "required": [
+              "routine_args"
+            ],
+            "properties": {
+              "routine_args": {
+                "$ref": "#/$defs/cpfArgs"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsTds"
+          },
+          "then": {
+            "anyOf": [
+              {
+                "required": [
+                  "stages"
+                ],
+                "properties": {
+                  "stages": {
+                    "minItems": 1
+                  }
+                }
+              },
+              {
+                "required": [
+                  "routine_config"
+                ],
+                "properties": {
+                  "routine_config": {
+                    "required": [
+                      "tf"
+                    ],
+                    "properties": {
+                      "tf": {
+                        "type": "number"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNotTds"
+          },
+          "then": {
+            "properties": {
+              "events": {
+                "maxItems": 0
+              },
+              "stages": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNotTds"
+          },
+          "then": {
+            "properties": {
+              "outputs": {
+                "properties": {
+                  "timeseries": {
+                    "maxItems": 0
+                  },
+                  "plots": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNotEig"
+          },
+          "then": {
+            "properties": {
+              "outputs": {
+                "properties": {
+                  "eig_plot": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNotCpf"
+          },
+          "then": {
+            "properties": {
+              "outputs": {
+                "properties": {
+                  "cpf_plot": {
+                    "type": "null"
+                  },
+                  "qv_plot": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "outputs"
+            ],
+            "properties": {
+              "outputs": {
+                "required": [
+                  "qv_plot"
+                ],
+                "properties": {
+                  "qv_plot": {
+                    "not": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "routine_args"
+            ],
+            "properties": {
+              "routine_args": {
+                "required": [
+                  "qv"
+                ],
+                "properties": {
+                  "qv": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "$ref": "#/$defs/routineIsNotTds"
+          },
+          "then": {
+            "properties": {
+              "checks": {
+                "properties": {
+                  "criteria": {
+                    "items": {
+                      "properties": {
+                        "source": {
+                          "const": "current"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

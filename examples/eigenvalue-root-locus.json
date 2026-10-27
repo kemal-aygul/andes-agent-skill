@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "study_name": "kundur-eigenvalue-and-root-locus",
+  "description": "Run small-signal analysis and sweep EXDC2 exciter gain KA.",
+  "defaults": {"log_level": 20, "strict": true, "overwrite": false, "copy_inputs": true, "seed": 42},
+  "jobs": [
+    {
+      "id": "eig-and-ka-sweep",
+      "case": {"builtin": "kundur/kundur_full.xlsx"},
+      "routine": "eig",
+      "routine_args": {
+        "sweep": {
+          "model": "EXDC2",
+          "parameter": "KA",
+          "idx": 1,
+          "values": [20, 40, 60, 80, 100, 120, 140, 160, 180, 200],
+          "eig_indices": [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
+          "plot_file": "ka-root-locus.png"
+        }
+      },
+      "outputs": {"eig_plot": "s-plane.png"},
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    }
+  ]
+}

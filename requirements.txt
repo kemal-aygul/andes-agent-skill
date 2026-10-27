@@ -1,0 +1,5 @@
+# Runtime environment for the skill's scripts (Python 3.10+; verified with 3.11).
+andes==2.0.0
+# Optional extras:
+#   andes[rl]==2.0.0           reinforcement-learning template (gymnasium)
+#   andes[performance]==2.0.0  numba acceleration

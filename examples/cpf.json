@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "study_name": "ieee14-cpf-pv-qv",
+  "description": "Trace an IEEE 14-bus PV curve and a Bus 14 QV curve as separate fresh-system jobs.",
+  "defaults": {"log_level": 20, "strict": true, "overwrite": false, "copy_inputs": true, "seed": 42},
+  "jobs": [
+    {
+      "id": "pv-nose-curve",
+      "case": {"builtin": "ieee14/ieee14.json"},
+      "routine": "cpf",
+      "routine_args": {"load_scale": 2.0},
+      "outputs": {"cpf_plot": {"bus_idx": 14, "file": "bus14-pv-curve.png"}},
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    },
+    {
+      "id": "qv-bus-14",
+      "case": {"builtin": "ieee14/ieee14.json"},
+      "routine": "cpf",
+      "routine_args": {"qv": {"bus_idx": 14, "q_range": 3.0}},
+      "outputs": {"qv_plot": "bus14-qv-curve.png"},
+      "checks": {"require_convergence": true, "finite": true, "criteria": []}
+    }
+  ]
+}

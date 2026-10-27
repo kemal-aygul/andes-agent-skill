@@ -1,0 +1,6 @@
+interface:
+  display_name: "ANDES Agent Skill"
+  short_description: "Inspected, verified ANDES 2.0 power-system studies from English or Turkish requests"
+  default_prompt: "Use $andes-agent-skill: inspect the real case, choose the quick/standard/research tier, run the study, and report only what convergence and exit-code evidence supports."
+policy:
+  allow_implicit_invocation: true
